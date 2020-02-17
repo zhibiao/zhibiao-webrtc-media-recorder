@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+  </head>
+  <body>
+		<button id="start">start</button>
+	<script>
+		const WebSocket = require('ws');
+		const wss = new WebSocket.Server({ port: 9002 });
+		wss.on('connection', function connection(ws) {
+			console.log('---------new-connection--------');
+		});
+		
+		wss.send = function(data){
+			wss.clients.forEach(function each(client) {
+				if (client.readyState == WebSocket.OPEN) {
+					client.send(data);
+				}
+			});
+		}
+		
+		document.querySelector('#start').addEventListener('click', () =>{
+				const constraints = {
+				  audio: {
+					mandatory: {
+					  chromeMediaSource: 'desktop'
+					}
+				  },
+				  video: {
+					mandatory: {
+						chromeMediaSource: 'desktop',
+						minWidth: 1920,
+						maxWidth: 1920,
+						minHeight: 1080,
+						maxHeight: 1080
+						
+					}
+				  }
+				}
+				
+				const mimeCodec = "video/webm; codecs=opus,vp9";
+				console.log('----MediaSource.isTypeSupported----', MediaSource.isTypeSupported(mimeCodec));
+				
+				navigator.mediaDevices.getUserMedia(constraints)
+				.then((stream) =>{
+					console.log('-----getUserMedia----',stream);
+					
+					const options = {
+					  mimeType : mimeCodec
+					}
+					
+					mediaRecorder = new MediaRecorder(stream, options);
+					console.log('----mediaRecorder-----', mediaRecorder);
+					
+					let chunks = [];
+					mediaRecorder.ondataavailable = function({ data }) {
+						console.log('------ondataavailable---------', data);
+						const reader = new FileReader();
+						reader.onload = function () {
+							console.log('------reader.result---', reader.result);
+							wss.send(reader.result);
+						}
+						reader.readAsArrayBuffer(data);
+					}
+					
+					mediaRecorder.onstart = function(e){
+						console.log('----mediaRecorder-----start---------');
+					}
+				
+					mediaRecorder.onstop = function(){
+						console.log('----mediaRecorder-----stop---------');
+					}
+					
+					mediaRecorder.onerror = function(e){
+						console.log('----mediaRecorder-----error---------', e);
+					}
+					
+					mediaRecorder.start(5);
+					
+				})
+				.catch((e) =>{
+					console.log('----getUserMedia-----error---------', e);
+				});
+				
+		});
+	</script>
+	
+  </body>
+</html>
