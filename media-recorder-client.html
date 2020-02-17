@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+  </head>
+  <body>
+	<video autoplay muted controls></video>
+	<script>
+	
+		const mimeCodec = "video/webm; codecs=opus,vp9";
+		console.log('-----MediaSource.isTypeSupporte--------', MediaSource.isTypeSupported(mimeCodec));
+		
+		const mediaSource = new MediaSource();
+		
+		const video = document.querySelector('video');
+		video.src = URL.createObjectURL(mediaSource);
+
+		console.log('------mediaSource-------', mediaSource);
+		
+		mediaSource.addEventListener('sourceopen', function(e) { 
+			console.log('---mediaSource---sourceopen-----------'); 
+		});
+		
+		mediaSource.addEventListener('sourceended', function(e) { 
+			console.log('----mediaSource--sourceended-----'); 
+		});
+		
+		mediaSource.addEventListener('sourceclose', function(e) { 
+			console.log('-----mediaSource--sourceclose------'); 
+		});
+		
+		mediaSource.addEventListener('error', function(e) { 
+			console.log('error: ' + mediaSource.readyState); 
+		});
+		
+		let sourceBuffer = null;
+		let arrayOfBlobs = [];
+		
+		mediaSource.addEventListener('sourceopen', (event) =>{
+			
+			sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+			
+			sourceBuffer.addEventListener('updatestart', function(e) {
+				console.log('--sourceBuffer-----updatestart-----');
+			});
+			
+			sourceBuffer.addEventListener('update', function(e) { 
+				console.log('-----sourceBuffer----update---------');
+			});
+			
+			sourceBuffer.addEventListener('updateend', function(e) {
+				console.log('-----sourceBuffer--updateend-----'); 
+				appendToSourceBuffer();
+			});
+			
+			sourceBuffer.addEventListener('error', function(e) {
+				console.log('--sourceBuffer---error-----', e); 
+			});
+			
+			sourceBuffer.addEventListener('abort', function(e) { 
+				console.log('----sourceBuffer--abort----', e); 
+			});
+		});
+		
+		function appendToSourceBuffer(){
+			if(mediaSource.readyState == "open" && 
+				sourceBuffer.updating == false &&
+				arrayOfBlobs.length > 0){
+				
+				sourceBuffer.appendBuffer(arrayOfBlobs.shift());
+				console.log('----------shift----arrayOfBlobs------------', arrayOfBlobs.length);
+			}
+		}
+		
+		const socket = new WebSocket('ws://localhost:9002');
+		socket.binaryType = 'arraybuffer';
+		socket.addEventListener('open', () =>{
+			console.log('------WebSocket----open--------');
+		});
+		
+		socket.addEventListener('message', ({ data }) =>{
+			console.log('----WebSocket----message-------', data);
+			arrayOfBlobs.push(data);
+			console.log('----push---arrayOfBlobs-------', arrayOfBlobs.length);
+			appendToSourceBuffer();
+		});
+	</script>
+	
+  </body>
+</html>
